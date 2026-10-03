@@ -1,0 +1,20 @@
+idf_component_register(
+    SRCS
+        "main.c"
+        "board/board_power.c"
+        "board/board_keys.c"
+        "audio/piano_synth.c"
+        "song/star_song.c"
+        "ui/led_piano.c"
+    INCLUDE_DIRS
+        "."
+        "board"
+        "audio"
+        "song"
+        "ui"
+    REQUIRES
+        esp_driver_pcnt
+        esp_driver_gpio
+        esp_driver_i2s
+        esp_timer
+)

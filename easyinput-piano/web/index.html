@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EasyInput Piano · 8键智能电子琴</title>
+  <style>
+    :root {
+      --bg-color: #0b0f19;
+      --card-bg: rgba(22, 29, 47, 0.75);
+      --card-border: rgba(255, 255, 255, 0.1);
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.4);
+      --success: #10b981;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --gold: #fbbf24;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      background: var(--bg-color);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Starry background canvas */
+    #star-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px 20px 40px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* Header bar */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 24px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(16px);
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+
+    .logo-area {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .logo-icon {
+      font-size: 28px;
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #0284c7, #38bdf8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    .logo-title h1 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .logo-title p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 600;
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      transition: all 0.3s;
+    }
+
+    .status-badge.connected {
+      background: rgba(16, 185, 129, 0.15);
+      color: #10b981;
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 10px currentColor;
+    }
+
+    button.btn {
+      background: linear-gradient(135deg, #0284c7, #38bdf8);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.3);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    button.btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(56, 189, 248, 0.5);
+    }
+
+    button.btn:active {
+      transform: translateY(0);
+    }
+
+    button.btn.btn-outline {
+      background: transparent;
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      box-shadow: none;
+    }
+
+    button.btn.btn-outline:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Mode & Song Banner Deck */
+    .song-deck {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(16px);
+      border-radius: 20px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .deck-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .mode-pills {
+      display: flex;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 4px;
+      border-radius: 12px;
+      gap: 4px;
+    }
+
+    .mode-pill {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .mode-pill.active {
+      background: var(--accent);
+      color: #042f2e;
+      box-shadow: 0 0 14px var(--accent-glow);
+    }
+
+    .song-stats {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    .progress-bar-container {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 9999px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #38bdf8, #10b981);
+      border-radius: 9999px;
+      transition: width 0.3s ease;
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
+    }
+
+    /* Note Carousel Ribbon */
+    .notes-ribbon-wrap {
+      overflow-x: auto;
+      padding: 12px 4px;
+      scroll-behavior: smooth;
+    }
+
+    .notes-ribbon {
+      display: inline-flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .note-card {
+      min-width: 68px;
+      height: 88px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      position: relative;
+    }
+
+    .note-card .lyric {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .note-card .pitch {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--accent);
+    }
+
+    .note-card .key-tag {
+      font-size: 10px;
+      padding: 2px 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      color: var(--text-muted);
+    }
+
+    .note-card.past {
+      opacity: 0.4;
+      transform: scale(0.92);
+      border-color: rgba(16, 185, 129, 0.4);
+    }
+
+    .note-card.past .pitch {
+      color: var(--success);
+    }
+
+    .note-card.current {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(16, 185, 129, 0.2));
+      border: 2px solid var(--accent);
+      transform: scale(1.15);
+      box-shadow: 0 0 25px var(--accent-glow);
+      z-index: 2;
+    }
+
+    .note-card.current .key-tag {
+      background: var(--accent);
+      color: #042f2e;
+      font-weight: 700;
+    }
+
+    /* Piano Keyboard Section */
+    .keyboard-section {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(16px);
+      border-radius: 24px;
+      padding: 32px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .guide-prompt {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 18px;
+      font-weight: 700;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 10px 24px;
+      border-radius: 9999px;
+      color: var(--accent);
+      animation: pulse-glow 2s infinite;
+    }
+
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 10px rgba(56, 189, 248, 0.2); }
+      50% { box-shadow: 0 0 24px rgba(56, 189, 248, 0.5); }
+    }
+
+    /* Physical Layout 4x2 representation */
+    .piano-matrix {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .row-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .key-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .piano-key {
+      background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+      border: 2px solid rgba(255, 255, 255, 0.12);
+      border-radius: 18px;
+      height: 160px;
+      padding: 16px 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5), inset 0 2px 2px rgba(255, 255, 255, 0.1);
+      transition: all 0.1s ease-out;
+    }
+
+    .piano-key::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: var(--key-color, #38bdf8);
+      opacity: 0.6;
+      transition: all 0.2s;
+    }
+
+    .piano-key:hover {
+      border-color: rgba(255, 255, 255, 0.3);
+      transform: translateY(-4px);
+    }
+
+    .piano-key:active, .piano-key.pressed {
+      transform: translateY(6px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7), 0 0 30px var(--key-color, rgba(56, 189, 248, 0.6));
+      border-color: var(--key-color, #38bdf8);
+      background: linear-gradient(180deg, #334155 0%, #1e293b 100%);
+    }
+
+    .piano-key.target-guide {
+      border-color: var(--gold);
+      animation: target-breath 1.2s infinite alternate;
+    }
+
+    @keyframes target-breath {
+      0% { box-shadow: 0 0 10px rgba(251, 191, 36, 0.3); }
+      100% { box-shadow: 0 0 35px rgba(251, 191, 36, 0.9); border-color: #fef08a; }
+    }
+
+    .key-badge-hw {
+      font-size: 12px;
+      font-weight: 800;
+      padding: 4px 10px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #cbd5e1;
+      letter-spacing: 0.5px;
+    }
+
+    .key-pitch-block {
+      text-align: center;
+    }
+
+    .key-solfege {
+      font-size: 38px;
+      font-weight: 900;
+      line-height: 1;
+      color: var(--key-color, #f8fafc);
+      text-shadow: 0 0 15px currentColor;
+    }
+
+    .key-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .key-footer {
+      font-size: 11px;
+      color: #64748b;
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+    }
+
+    /* Logs & Diagnostics */
+    .bottom-deck {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .bottom-deck {
+        grid-template-columns: 1fr;
+      }
+      .key-row {
+        gap: 8px;
+      }
+      .piano-key {
+        height: 120px;
+        padding: 10px 6px;
+      }
+      .key-solfege {
+        font-size: 26px;
+      }
+    }
+
+    .console-box {
+      background: rgba(5, 8, 15, 0.85);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 16px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      height: 160px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 6px;
+    }
+
+    .log-line {
+      line-height: 1.5;
+      color: #94a3b8;
+    }
+
+    .log-line.correct {
+      color: #34d399;
+      font-weight: 600;
+    }
+
+    .log-line.error {
+      color: #f87171;
+    }
+
+    .log-line.info {
+      color: #38bdf8;
+    }
+
+    .info-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 18px;
+      font-size: 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      color: var(--text-muted);
+    }
+
+    .info-card h3 {
+      font-size: 14px;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Confetti animation canvas */
+    #confetti-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 999;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="star-canvas"></canvas>
+  <canvas id="confetti-canvas"></canvas>
+
+  <div class="container">
+    <!-- Top Header -->
+    <header>
+      <div class="logo-area">
+        <div class="logo-icon">🎹</div>
+        <div class="logo-title">
+          <h1>EasyInput Piano <span style="font-size: 11px; padding: 2px 8px; border-radius: 999px; background: rgba(56,189,248,0.2); color:#38bdf8;">V2.0</span></h1>
+          <p>ESP32-S3 8键智能电子琴 · 《小星星》演奏工作站</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div id="conn-status" class="status-badge">
+          <div class="status-dot"></div>
+          <span id="conn-text">未连接板卡</span>
+        </div>
+        <button id="btn-connect" class="btn">
+          <span>🔌 连接开发板 (Web Serial)</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Song & Mode Deck -->
+    <div class="song-deck">
+      <div class="deck-top">
+        <div class="mode-pills">
+          <div class="mode-pill active" data-mode="1">🌟 小星星跟弹教学</div>
+          <div class="mode-pill" data-mode="0">🎹 自由琴键演奏</div>
+          <div class="mode-pill" data-mode="2">🪄 一键魔法演奏</div>
+          <div class="mode-pill" data-mode="3">▶ 自动演示播放</div>
+        </div>
+        <div class="song-stats">
+          <span id="song-progress-text">进度: 1 / 42 (2%)</span>
+          <span id="song-accuracy-text">当前旋律: 1 1 5 5 6 6 5</span>
+        </div>
+      </div>
+
+      <div class="progress-bar-container">
+        <div id="progress-fill" class="progress-bar-fill" style="width: 2%;"></div>
+      </div>
+
+      <!-- Musical ribbon -->
+      <div class="notes-ribbon-wrap" id="ribbon-wrap">
+        <div class="notes-ribbon" id="notes-ribbon">
+          <!-- Dynamically populated 42 notes -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Piano Keyboard Section -->
+    <div class="keyboard-section">
+      <div id="guide-prompt-box" class="guide-prompt">
+        <span>🎯 当前目标: 请按 <strong id="guide-target-key">S5</strong> 键（1 Do） 歌词: "<span id="guide-target-lyric">一</span>"</span>
+      </div>
+
+      <div class="piano-matrix">
+        <!-- Upper Row (S1 ~ S4) -->
+        <div>
+          <div class="row-label">
+            <span>🔺 上排高音区 (High Octave)</span>
+          </div>
+          <div class="key-row">
+            <!-- S1: 5 Sol -->
+            <div class="piano-key" data-key="0" data-note="4" style="--key-color: #38bdf8;">
+              <span class="key-badge-hw">S1</span>
+              <div class="key-pitch-block">
+                <div class="key-solfege">5</div>
+                <div class="key-name">Sol · G4</div>
+              </div>
+              <div class="key-footer"><span>392 Hz</span><span>键 [5]</span></div>
+            </div>
+            <!-- S2: 6 La -->
+            <div class="piano-key" data-key="1" data-note="5" style="--key-color: #818cf8;">
+              <span class="key-badge-hw">S2</span>
+              <div class="key-pitch-block">
+                <div class="key-solfege">6</div>
+                <div class="key-name">La · A4</div>
+              </div>
+              <div class="key-footer"><span>440 Hz</span><span>键 [6]</span></div>
+            </div>
+            <!-- S3: 7 Si -->
+            <div class="piano-key" data-key="2" data-note="6" style="--key-color: #c084fc;">
+              <span class="key-badge-hw">S3</span>
+              <div class="key-pitch-block">
+                <div class="key-solfege">7</div>
+                <div class="key-name">Si · B4</div>
+              </div>
+              <div class="key-footer"><span>494 Hz</span><span>键 [7]</span></div>
+            </div>
+            <!-- S4: i High Do -->
+            <div class="piano-key" data-key="3" data-note="7" style="--key-color: #f43f5e;">
+              <span class="key-badge-hw">S4</span>
+              <div class="key-pitch-block">
+                <div class="key-solfege">i</div>
+                <div class="key-name">Do · C5</div>
+              </div>
+              <div class="key-footer"><span>523 Hz</span><span>键 [8]</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lower Row (S5 ~ S8) -->
+        <div>
+          <div class="row-label">
+            <span>🔻 下排基音区 (Base Octave)</span>
+          </div>
+          <div class="key-row">
+            <!-- S5: 1 Do -->
+            <div class="piano-key" data-key="4" data-note="0" style="--key-color: #ef4444;">
+              <span class="key-badge-hw">S5</span>
+              <div class="key-pitch-block">
+                <div class="key-solfege">1</div>
+                <div class="key-name">Do · C4</div>
+              </div>
+              <div class="key-footer"><span>262 Hz</span><span>键 [1]</span></div>
+            </div>
+            <!-- S6: 2 Re -->
+            <div class="piano-key" data-key="5" data-note="1" style="--key-color: #f97316;">
+              <span class="key-badge-hw">S6</span>
+              <div class="key-pitch-block">
+                <div class="key-solfege">2</div>
+                <div class="key-name">Re · D4</div>
+              </div>
+              <div class="key-footer"><span>294 Hz</span><span>键 [2]</span></div>
+            </div>
+            <!-- S7: 3 Mi -->
+            <div class="piano-key" data-key="6" data-note="2" style="--key-color: #eab308;">
+              <span class="key-badge-hw">S7</span>
+              <div class="key-pitch-block">
+                <div class="key-solfege">3</div>
+                <div class="key-name">Mi · E4</div>
+              </div>
+              <div class="key-footer"><span>330 Hz</span><span>键 [3]</span></div>
+            </div>
+            <!-- S8: 4 Fa -->
+            <div class="piano-key" data-key="7" data-note="3" style="--key-color: #10b981;">
+              <span class="key-badge-hw">S8</span>
+              <div class="key-pitch-block">
+                <div class="key-solfege">4</div>
+                <div class="key-name">Fa · F4</div>
+              </div>
+              <div class="key-footer"><span>349 Hz</span><span>键 [4]</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Diagnostics & Tips -->
+    <div class="bottom-deck">
+      <div>
+        <div style="font-size: 13px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px;">
+          📡 实时交互事件控制台 (Live Event Stream)
+        </div>
+        <div class="console-box" id="console-stream">
+          <div class="log-line info">等待串口连接或本地按键触发...</div>
+        </div>
+      </div>
+
+      <div class="info-card">
+        <h3>💡 操作速查指南</h3>
+        <p>• <strong>硬件直连</strong>：使用 USB 连接电脑后，点击右上角【连接开发板】，选择 ESP32 串口。</p>
+        <p>• <strong>双排小星星口诀</strong>：</p>
+        <p style="color: #38bdf8; font-weight: 600;">S5 S5 S1 S1 | S2 S2 S1 -<br>S8 S8 S7 S7 | S6 S6 S5 -</p>
+        <p>• <strong>键盘弹奏</strong>：支持电脑数字键 1~8 直接弹奏琴键！</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* =========================================================
+     * 1. Little Star Song Data
+     * ========================================================= */
+    const STAR_SONG = [
+      { note: 0, str: "1", lyric: "一" },
+      { note: 0, str: "1", lyric: "闪" },
+      { note: 4, str: "5", lyric: "一" },
+      { note: 4, str: "5", lyric: "闪" },
+      { note: 5, str: "6", lyric: "亮" },
+      { note: 5, str: "6", lyric: "晶" },
+      { note: 4, str: "5", lyric: "晶" },
+
+      { note: 3, str: "4", lyric: "满" },
+      { note: 3, str: "4", lyric: "天" },
+      { note: 2, str: "3", lyric: "都" },
+      { note: 2, str: "3", lyric: "是" },
+      { note: 1, str: "2", lyric: "小" },
+      { note: 1, str: "2", lyric: "星" },
+      { note: 0, str: "1", lyric: "星" },
+
+      { note: 4, str: "5", lyric: "挂" },
+      { note: 4, str: "5", lyric: "在" },
+      { note: 3, str: "4", lyric: "天" },
+      { note: 3, str: "4", lyric: "空" },
+      { note: 2, str: "3", lyric: "放" },
+      { note: 2, str: "3", lyric: "光" },
+      { note: 1, str: "2", lyric: "明" },
+
+      { note: 4, str: "5", lyric: "好" },
+      { note: 4, str: "5", lyric: "像" },
+      { note: 3, str: "4", lyric: "千" },
+      { note: 3, str: "4", lyric: "万" },
+      { note: 2, str: "3", lyric: "小" },
+      { note: 2, str: "3", lyric: "眼" },
+      { note: 1, str: "2", lyric: "睛" },
+
+      { note: 0, str: "1", lyric: "一" },
+      { note: 0, str: "1", lyric: "闪" },
+      { note: 4, str: "5", lyric: "一" },
+      { note: 4, str: "5", lyric: "闪" },
+      { note: 5, str: "6", lyric: "亮" },
+      { note: 5, str: "6", lyric: "晶" },
+      { note: 4, str: "5", lyric: "晶" },
+
+      { note: 3, str: "4", lyric: "满" },
+      { note: 3, str: "4", lyric: "天" },
+      { note: 2, str: "3", lyric: "都" },
+      { note: 2, str: "3", lyric: "是" },
+      { note: 1, str: "2", lyric: "小" },
+      { note: 1, str: "2", lyric: "星" },
+      { note: 0, str: "1", lyric: "星" }
+    ];
+
+    const NOTE_FREQS = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25];
+    const NOTE_NAMES = ["1 (Do/C4)", "2 (Re/D4)", "3 (Mi/E4)", "4 (Fa/F4)", "5 (Sol/G4)", "6 (La/A4)", "7 (Si/B4)", "i (Do/C5)"];
+    const KEY_TO_NOTE = [4, 5, 6, 7, 0, 1, 2, 3];
+    const NOTE_TO_KEY = [4, 5, 6, 7, 0, 1, 2, 3];
+    const KEY_NAMES = ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8"];
+
+    let currentStep = 0;
+    let activeMode = 1; /* 0: Free, 1: Guide, 2: Magic, 3: Auto */
+
+    /* =========================================================
+     * 2. Web Audio Piano Synthesizer (Local fallback & preview)
+     * ========================================================= */
+    let audioCtx = null;
+
+    function getAudioContext() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    function playLocalTone(noteIdx) {
+      try {
+        const ctx = getAudioContext();
+        const freq = NOTE_FREQS[noteIdx];
+        const now = ctx.currentTime;
+
+        /* Additive synthesis: Fundamental + 2nd & 3rd harmonics */
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        const osc3 = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(freq, now);
+
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(freq * 2, now);
+
+        osc3.type = 'sine';
+        osc3.frequency.setValueAtTime(freq * 3, now);
+
+        /* Piano-like ADSR curve */
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.45, now + 0.008);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
+
+        osc1.connect(gain);
+        osc2.connect(gain);
+        osc3.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc1.start(now);
+        osc2.start(now);
+        osc3.start(now);
+
+        osc1.stop(now + 1.3);
+        osc2.stop(now + 1.3);
+        osc3.stop(now + 1.3);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    /* =========================================================
+     * 3. UI Initialisation & Song Ribbon
+     * ========================================================= */
+    const ribbonContainer = document.getElementById('notes-ribbon');
+    const ribbonWrap = document.getElementById('ribbon-wrap');
+
+    STAR_SONG.forEach((item, index) => {
+      const card = document.createElement('div');
+      card.className = 'note-card';
+      card.id = `note-card-${index}`;
+      const keyIdx = NOTE_TO_KEY[item.note];
+      card.innerHTML = `
+        <span class="lyric">${item.lyric}</span>
+        <span class="pitch">${item.str}</span>
+        <span class="key-tag">${KEY_NAMES[keyIdx]}</span>
+      `;
+      ribbonContainer.appendChild(card);
+    });
+
+    function updateGuideUI() {
+      const cur = STAR_SONG[currentStep];
+      const targetKey = NOTE_TO_KEY[cur.note];
+
+      /* Update ribbon active card */
+      document.querySelectorAll('.note-card').forEach((c, idx) => {
+        c.classList.remove('current');
+        if (idx < currentStep) {
+          c.classList.add('past');
+        } else {
+          c.classList.remove('past');
+        }
+      });
+
+      const activeCard = document.getElementById(`note-card-${currentStep}`);
+      if (activeCard) {
+        activeCard.classList.add('current');
+        /* Scroll into view smoothly */
+        const offset = activeCard.offsetLeft - (ribbonWrap.clientWidth / 2) + 34;
+        ribbonWrap.scrollTo({ left: offset, behavior: 'smooth' });
+      }
+
+      /* Update prompt text */
+      document.getElementById('guide-target-key').innerText = KEY_NAMES[targetKey];
+      document.getElementById('guide-target-lyric').innerText = cur.lyric;
+
+      /* Update progress bar */
+      const percent = Math.round(((currentStep + 1) / STAR_SONG.length) * 100);
+      document.getElementById('progress-fill').style.width = `${percent}%`;
+      document.getElementById('song-progress-text').innerText = `进度: ${currentStep + 1} / ${STAR_SONG.length} (${percent}%)`;
+
+      /* Highlight target key on virtual piano */
+      document.querySelectorAll('.piano-key').forEach(el => {
+        el.classList.remove('target-guide');
+        if (activeMode === 1 && parseInt(el.dataset.key) === targetKey) {
+          el.classList.add('target-guide');
+        }
+      });
+    }
+
+    /* Trigger visual note press */
+    function triggerNoteUI(keyIdx) {
+      const el = document.querySelector(`.piano-key[data-key="${keyIdx}"]`);
+      if (el) {
+        el.classList.add('pressed');
+        setTimeout(() => el.classList.remove('pressed'), 250);
+      }
+    }
+
+    function appendLog(text, type = 'info') {
+      const box = document.getElementById('console-stream');
+      const line = document.createElement('div');
+      line.className = `log-line ${type}`;
+      line.innerText = `[${new Date().toLocaleTimeString()}] ${text}`;
+      box.insertBefore(line, box.firstChild);
+    }
+
+    /* =========================================================
+     * 4. Game Logic for Hit Detection
+     * ========================================================= */
+    function handleKeyHit(keyIdx) {
+      triggerNoteUI(keyIdx);
+      const noteIdx = KEY_TO_NOTE[keyIdx];
+      playLocalTone(noteIdx);
+
+      if (activeMode === 0) {
+        /* Free play */
+        appendLog(`自由演奏: 按键 ${KEY_NAMES[keyIdx]} -> 音符 ${NOTE_NAMES[noteIdx]}`, 'info');
+      } else if (activeMode === 1) {
+        /* Guide Mode */
+        const target = STAR_SONG[currentStep];
+        const targetKey = NOTE_TO_KEY[target.note];
+
+        if (keyIdx === targetKey) {
+          appendLog(`✔ [正确!] 弹响 ${KEY_NAMES[keyIdx]} (${target.str}) · 歌词: "${target.lyric}"`, 'correct');
+          currentStep++;
+          if (currentStep >= STAR_SONG.length) {
+            triggerVictoryCelebration();
+            currentStep = 0;
+          }
+          updateGuideUI();
+        } else {
+          appendLog(`✘ [偏差] 按下了 ${KEY_NAMES[keyIdx]}，目标是 [${KEY_NAMES[targetKey]}] ("${target.lyric}")`, 'error');
+        }
+      } else if (activeMode === 2) {
+        /* Magic one key */
+        const cur = STAR_SONG[currentStep];
+        appendLog(`🪄 魔法弹奏: 推进小星星音符 ${cur.str} ("${cur.lyric}")`, 'correct');
+        currentStep = (currentStep + 1) % STAR_SONG.length;
+        if (currentStep === 0) triggerVictoryCelebration();
+        updateGuideUI();
+      }
+    }
+
+    /* Click on virtual piano keys */
+    document.querySelectorAll('.piano-key').forEach(keyEl => {
+      keyEl.addEventListener('mousedown', () => {
+        const keyIdx = parseInt(keyEl.dataset.key);
+        handleKeyHit(keyIdx);
+      });
+    });
+
+    /* PC Keyboard hotkeys 1..8 */
+    window.addEventListener('keydown', (e) => {
+      const map = {
+        '1': 4, /* S5 -> 1 */
+        '2': 5, /* S6 -> 2 */
+        '3': 6, /* S7 -> 3 */
+        '4': 7, /* S8 -> 4 */
+        '5': 0, /* S1 -> 5 */
+        '6': 1, /* S2 -> 6 */
+        '7': 2, /* S3 -> 7 */
+        '8': 3, /* S4 -> i */
+      };
+      if (map[e.key] !== undefined && !e.repeat) {
+        handleKeyHit(map[e.key]);
+      }
+    });
+
+    /* Mode pill buttons */
+    document.querySelectorAll('.mode-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        document.querySelectorAll('.mode-pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        activeMode = parseInt(pill.dataset.mode);
+        if (activeMode === 1) {
+          document.getElementById('guide-prompt-box').style.display = 'flex';
+          updateGuideUI();
+        } else {
+          document.getElementById('guide-prompt-box').style.display = 'none';
+          document.querySelectorAll('.piano-key').forEach(el => el.classList.remove('target-guide'));
+        }
+        appendLog(`切换模式至: ${pill.innerText}`, 'info');
+      });
+    });
+
+    /* =========================================================
+     * 5. Web Serial Integration (ESP32-S3 Serial Parsing)
+     * ========================================================= */
+    let serialPort = null;
+    let serialReader = null;
+
+    async function connectSerial() {
+      if (!("serial" in navigator)) {
+        alert("当前浏览器不支持 Web Serial。请在电脑上使用 Google Chrome 或 Edge 浏览器访问本页面！");
+        return;
+      }
+
+      try {
+        serialPort = await navigator.serial.requestPort();
+        await serialPort.open({ baudRate: 115200 });
+
+        document.getElementById('conn-status').classList.add('connected');
+        document.getElementById('conn-text').innerText = '已连接 EasyInput';
+        document.getElementById('btn-connect').style.display = 'none';
+        appendLog('🟢 串口已成功连接 (波特率 115200)，已同步开发板按键事件！', 'correct');
+
+        readSerialLoop();
+      } catch (err) {
+        console.error(err);
+        appendLog(`❌ 连接串口失败或已取消: ${err.message}`, 'error');
+      }
+    }
+
+    document.getElementById('btn-connect').addEventListener('click', connectSerial);
+
+    async function readSerialLoop() {
+      const textDecoder = new TextDecoderStream();
+      serialPort.readable.pipeTo(textDecoder.writable);
+      serialReader = textDecoder.readable.getReader();
+
+      let buffer = "";
+      try {
+        while (true) {
+          const { value, done } = await serialReader.read();
+          if (done) break;
+          if (value) {
+            buffer += value;
+            const lines = buffer.split('\n');
+            buffer = lines.pop(); // keep remainder
+
+            for (const line of lines) {
+              parseDeviceOutput(line.trim());
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Serial read error:", err);
+      } finally {
+        document.getElementById('conn-status').classList.remove('connected');
+        document.getElementById('conn-text').innerText = '连接已断开';
+        document.getElementById('btn-connect').style.display = 'inline-flex';
+      }
+    }
+
+    /* Parse serial lines from ESP32 */
+    function parseDeviceOutput(line) {
+      if (!line) return;
+
+      /* Match button presses: [自由演奏] 按键 S5 -> 音符 1 */
+      const hitMatch = line.match(/按键\s*(S[1-8])/i) || line.match(/按键\s*([0-7])/i);
+      if (hitMatch) {
+        let keyIdx = -1;
+        if (hitMatch[1].startsWith('S')) {
+          keyIdx = parseInt(hitMatch[1].substring(1)) - 1;
+        } else {
+          keyIdx = parseInt(hitMatch[1]);
+        }
+        if (keyIdx >= 0 && keyIdx < 8) {
+          handleKeyHit(keyIdx);
+        }
+      }
+
+      /* Match mode switch */
+      if (line.includes("切换至模式")) {
+        appendLog(line, 'info');
+      }
+
+      /* Match victory */
+      if (line.includes("太棒了") || line.includes("🎉")) {
+        triggerVictoryCelebration();
+      }
+    }
+
+    /* =========================================================
+     * 6. Victory Confetti Celebration
+     * ========================================================= */
+    const confCanvas = document.getElementById('confetti-canvas');
+    const confCtx = confCanvas.getContext('2d');
+    let confParticles = [];
+
+    function resizeConfetti() {
+      confCanvas.width = window.innerWidth;
+      confCanvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeConfetti);
+    resizeConfetti();
+
+    function triggerVictoryCelebration() {
+      appendLog("🎉🎉 恭喜！《小星星》整首曲目演奏完成！🎉🎉", 'correct');
+      confParticles = [];
+      const colors = ['#38bdf8', '#10b981', '#fbbf24', '#f43f5e', '#a855f7', '#ffffff'];
+      for (let i = 0; i < 150; ++i) {
+        confParticles.push({
+          x: confCanvas.width / 2,
+          y: confCanvas.height / 2,
+          vx: (Math.random() - 0.5) * 18,
+          vy: (Math.random() - 0.7) * 20,
+          size: Math.random() * 8 + 4,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          rotation: Math.random() * 360,
+          rSpeed: (Math.random() - 0.5) * 12,
+          alpha: 1
+        });
+      }
+    }
+
+    function renderConfetti() {
+      confCtx.clearRect(0, 0, confCanvas.width, confCanvas.height);
+      for (let i = confParticles.length - 1; i >= 0; --i) {
+        const p = confParticles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.4; /* gravity */
+        p.vx *= 0.98;
+        p.rotation += p.rSpeed;
+        p.alpha -= 0.008;
+
+        if (p.alpha <= 0) {
+          confParticles.splice(i, 1);
+          continue;
+        }
+
+        confCtx.save();
+        confCtx.globalAlpha = p.alpha;
+        confCtx.translate(p.x, p.y);
+        confCtx.rotate(p.rotation * Math.PI / 180);
+        confCtx.fillStyle = p.color;
+        confCtx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+        confCtx.restore();
+      }
+      requestAnimationFrame(renderConfetti);
+    }
+    renderConfetti();
+
+    /* =========================================================
+     * 7. Starry Canvas Background
+     * ========================================================= */
+    const starCanvas = document.getElementById('star-canvas');
+    const starCtx = starCanvas.getContext('2d');
+    let stars = [];
+
+    function resizeStars() {
+      starCanvas.width = window.innerWidth;
+      starCanvas.height = window.innerHeight;
+      stars = [];
+      for (let i = 0; i < 80; ++i) {
+        stars.push({
+          x: Math.random() * starCanvas.width,
+          y: Math.random() * starCanvas.height,
+          radius: Math.random() * 1.5,
+          alpha: Math.random() * 0.8 + 0.2,
+          speed: Math.random() * 0.02 + 0.005
+        });
+      }
+    }
+    window.addEventListener('resize', resizeStars);
+    resizeStars();
+
+    function renderStars() {
+      starCtx.clearRect(0, 0, starCanvas.width, starCanvas.height);
+      stars.forEach(s => {
+        s.alpha += Math.sin(Date.now() * s.speed) * 0.01;
+        starCtx.beginPath();
+        starCtx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+        starCtx.fillStyle = `rgba(255, 255, 255, ${Math.max(0.1, Math.min(1, s.alpha))})`;
+        starCtx.fill();
+      });
+      requestAnimationFrame(renderStars);
+    }
+    renderStars();
+
+    /* Initialize UI */
+    updateGuideUI();
+  </script>
+</body>
+</html>
