@@ -1,0 +1,36 @@
+# ESP-IDF / build
+build/
+sdkconfig
+sdkconfig.old
+dependencies.lock
+managed_components/
+.cache/
+
+# Tooling / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+*.pyc
+__pycache__/
+.python-version
+.env
+.env.*
+
+# App
+node_modules/
+app/node_modules/
+app/dist/
+
+# Local artifacts
+*.log
+dist/
+out/
+*.bin
+*.elf
+*.map
+*.uf2
+
+# Keep sample placeholders, ignore large local packs
+assets/samples/local/

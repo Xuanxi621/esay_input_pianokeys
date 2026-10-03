@@ -1,0 +1,17 @@
+{
+  "name": "easyinput-beatbox",
+  "private": true,
+  "license": "MIT",
+  "packageManager": "pnpm@10.5.0",
+  "scripts": {
+    "dev": "pnpm --filter easyinput-beatbox-app dev",
+    "build": "pnpm --filter easyinput-beatbox-app build",
+    "test": "pnpm --filter easyinput-beatbox-app test",
+    "desktop": "node desktop/dev-runner.mjs",
+    "desktop:dev": "pnpm --filter easyinput-beatbox-desktop dev",
+    "desktop:start": "pnpm build && pnpm --filter easyinput-beatbox-desktop start"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["electron"]
+  }
+}
