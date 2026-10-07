@@ -96,26 +96,45 @@ esp_err_t board_keys_init(void)
     return ESP_OK;
 }
 
+static int64_t s_key_debounce_us[8] = {0};
+static int64_t s_enc_debounce_us = 0;
+
 esp_err_t board_keys_poll(board_input_snapshot_t *out)
 {
     if (!out) {
         return ESP_ERR_INVALID_ARG;
     }
 
-    /* 8 physical keys: active low (pressed when 0) */
+    const int64_t now_us = esp_timer_get_time();
+
+    /* 8 physical keys: active low with 25ms software debounce filter */
     for (int i = 0; i < 8; ++i) {
-        bool current = (gpio_get_level(s_key_gpios[i]) == 0);
-        out->s[i] = current;
-        out->pressed[i] = (current && !s_keys_last[i]);
-        out->released[i] = (!current && s_keys_last[i]);
-        s_keys_last[i] = current;
+        bool raw = (gpio_get_level(s_key_gpios[i]) == 0);
+        out->pressed[i] = false;
+        out->released[i] = false;
+
+        if (raw != s_keys_last[i]) {
+            if (now_us - s_key_debounce_us[i] >= 25000) {
+                s_key_debounce_us[i] = now_us;
+                s_keys_last[i] = raw;
+                out->pressed[i] = raw;
+                out->released[i] = !raw;
+            }
+        }
+        out->s[i] = s_keys_last[i];
     }
 
-    /* Encoder press (S9): active low */
-    bool enc_curr = (gpio_get_level(BOARD_GPIO_ENC_PRESS) == 0);
-    out->enc_press = enc_curr;
-    out->enc_just_pressed = (enc_curr && !s_enc_last);
-    s_enc_last = enc_curr;
+    /* Encoder press (S9): active low with debounce */
+    bool raw_enc = (gpio_get_level(BOARD_GPIO_ENC_PRESS) == 0);
+    out->enc_just_pressed = false;
+    if (raw_enc != s_enc_last) {
+        if (now_us - s_enc_debounce_us >= 25000) {
+            s_enc_debounce_us = now_us;
+            s_enc_last = raw_enc;
+            out->enc_just_pressed = raw_enc;
+        }
+    }
+    out->enc_press = s_enc_last;
 
     /* Rotary delta from hardware PCNT */
     int raw_count = 0;

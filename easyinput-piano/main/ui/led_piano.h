@@ -42,9 +42,29 @@ void led_piano_show_volume(uint8_t volume);
 void led_piano_show_victory(void);
 
 /**
+ * Visual error hint when wrong key is pressed in game.
+ */
+void led_piano_on_miss(void);
+
+/**
  * Update tick for animations (call periodically in loop).
  */
 void led_piano_update(int64_t now_us, piano_play_mode_t mode);
+
+/**
+ * Set LED brightness percentage (0..100, default is soft 8%).
+ */
+void led_piano_set_brightness(uint8_t percent);
+
+/**
+ * Toggle LEDs ON/OFF (silent mute mode).
+ */
+void led_piano_toggle_enable(void);
+
+/**
+ * Check if LEDs are enabled.
+ */
+bool led_piano_is_enabled(void);
 
 #ifdef __cplusplus
 }
